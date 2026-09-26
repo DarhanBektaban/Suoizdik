@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>suoizdik.com</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .card {
+      background: #ffffff;
+      padding: 32px 24px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.06);
+      width: 100%;
+      max-width: 480px;
+      text-align: center;
+      border: 1px solid #e2e8f0;
+    }
+    h1 {
+      font-size: 2.2rem;
+      color: #1e3a8a;
+      margin-bottom: 6px;
+      letter-spacing: -0.5px;
+    }
+    p.subtitle {
+      color: #64748b;
+      margin-bottom: 24px;
+      font-size: 0.95rem;
+    }
+    input[type="text"] {
+      width: 100%;
+      padding: 16px 20px;
+      font-size: 1.2rem;
+      border: 2px solid #cbd5e1;
+      border-radius: 14px;
+      outline: none;
+      transition: all 0.2s ease;
+      text-align: center;
+    }
+    input[type="text"]:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    .result-box {
+      margin-top: 24px;
+      min-height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .match-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      background: #f0fdf4;
+      padding: 18px 24px;
+      border-radius: 14px;
+      border: 1.5px solid #86efac;
+    }
+    .word-text {
+      font-size: 1.4rem;
+      font-weight: 700;
+      color: #166534;
+      letter-spacing: 0.3px;
+    }
+    .audio-btn {
+      background: #16a34a;
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .audio-btn:hover {
+      background: #15803d;
+    }
+    .empty-state {
+      color: #94a3b8;
+      font-size: 0.95rem;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+    <h1>suoizdik.com</h1>
+    <p class="subtitle">Darhan Bektaban ailippesimen suoizdik</p>
+
+    <input type="text" id="wordInput" placeholder="Suoizdi zhazygnyz..." autofocus autocomplete="off">
+
+    <div class="result-box" id="resultBox">
+      <span class="empty-state">Suoizdi engizigniz...</span>
+    </div>
+  </div>
+
+  <script>
+    let audioCtx = null;
+
+    // Қазақ тілі фонемаларының дәл акустикалық көрсеткіштері
+    const phonemeMap = {
+      // Жуан дауыстылар
+      'a':   { f1: 730,  f2: 1220, f3: 2450, dur: 0.17, type: 'vowel', gain: 0.7 },
+      'o':   { f1: 510,  f2: 890,  f3: 2350, dur: 0.17, type: 'vowel', gain: 0.7 },
+      'y':   { f1: 390,  f2: 1200, f3: 2300, dur: 0.13, type: 'vowel', gain: 0.6 }, // ы
+      'uu':  { f1: 340,  f2: 780,  f3: 2250, dur: 0.17, type: 'vowel', gain: 0.65 }, // у
+
+      // Жіңішке дауыстылар
+      'ai':  { f1: 660,  f2: 1820, f3: 2650, dur: 0.16, type: 'vowel', gain: 0.7 }, // ә
+      'e':   { f1: 530,  f2: 1850, f3: 2600, dur: 0.14, type: 'vowel', gain: 0.65 },
+      'i':   { f1: 330,  f2: 2150, f3: 2850, dur: 0.12, type: 'vowel', gain: 0.6 }, // і
+      'uoi': { f1: 460,  f2: 1520, f3: 2300, dur: 0.16, type: 'vowel', gain: 0.65 }, // ө
+      'ui':  { f1: 330,  f2: 1620, f3: 2300, dur: 0.14, type: 'vowel', gain: 0.65 }, // ү
+
+      // Үнді және сонор дауыссыздар
+      'm':   { f1: 270,  f2: 1100, f3: 2200, dur: 0.11, type: 'nasal', gain: 0.35 },
+      'n':   { f1: 270,  f2: 1500, f3: 2350, dur: 0.11, type: 'nasal', gain: 0.35 },
+      'gn':  { f1: 270,  f2: 1950, f3: 2500, dur: 0.12, type: 'nasal', gain: 0.35 }, // ң
+      'l':   { f1: 380,  f2: 1250, f3: 2550, dur: 0.11, type: 'liquid', gain: 0.45 },
+      'r':   { f1: 420,  f2: 1350, f3: 1950, dur: 0.11, type: 'liquid', gain: 0.45 },
+      'j':   { f1: 290,  f2: 2100, f3: 2800, dur: 0.10, type: 'liquid', gain: 0.45 }, // й
+
+      // Ұяң дауыссыздар
+      'b':   { f1: 240,  f2: 900,  f3: 2200, dur: 0.08, type: 'voiced_stop', gain: 0.4 },
+      'd':   { f1: 240,  f2: 1600, f3: 2450, dur: 0.08, type: 'voiced_stop', gain: 0.4 },
+      'g':   { f1: 250,  f2: 1900, f3: 2550, dur: 0.08, type: 'voiced_stop', gain: 0.4 },
+      'gh':  { f1: 400,  f2: 1150, f3: 2350, dur: 0.11, type: 'liquid', gain: 0.45 }, // ғ
+      'z':   { f1: 240,  noiseF: 4200, dur: 0.12, type: 'voiced_fric', gain: 0.35 },
+      'zh':  { f1: 240,  noiseF: 2500, dur: 0.12, type: 'voiced_fric', gain: 0.4 },
+
+      // Қатаң дауыссыздар
+      's':   { noiseF: 5000, dur: 0.13, type: 'fricative', gain: 0.3 },
+      'sh':  { noiseF: 2600, dur: 0.13, type: 'fricative', gain: 0.35 },
+      't':   { burstF: 2200, dur: 0.07, type: 'stop', gain: 0.5 },
+      'k':   { burstF: 2400, dur: 0.07, type: 'stop', gain: 0.5 },
+      'q':   { burstF: 1300, dur: 0.08, type: 'stop', gain: 0.5 }
+    };
+
+    // Адам көмейінің акустикалық толқыны
+    function createVocalWave(ctx) {
+      const n = 1024;
+      const real = new Float32Array(n);
+      const imag = new Float32Array(n);
+      for (let i = 1; i < n; i++) {
+        // Тірі көмей қатпарларының импульсі
+        const factor = 1.0 / Math.pow(i, 1.25);
+        real[i] = (i % 2 === 0 ? 0.6 : -0.6) * factor;
+        imag[i] = factor * Math.sin(i * 0.3);
+      }
+      return ctx.createPeriodicWave(real, imag);
+    }
+
+    let sharedNoise = null;
+    function getNoiseBuffer(ctx) {
+      if (!sharedNoise) {
+        const len = ctx.sampleRate * 2.0;
+        sharedNoise = ctx.createBuffer(1, len, ctx.sampleRate);
+        const data = sharedNoise.getChannelData(0);
+        for (let i = 0; i < len; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+      }
+      return sharedNoise;
+    }
+
+    function synthesizeAcousticWord(word) {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      // Тіркестерді дұрыс жіктеу
+      const tokens = [];
+      let i = 0;
+      const w = word.toLowerCase();
+      while (i < w.length) {
+        if (i + 3 <= w.length && phonemeMap[w.slice(i, i + 3)]) {
+          tokens.push(w.slice(i, i + 3));
+          i += 3;
+        } else if (i + 2 <= w.length && phonemeMap[w.slice(i, i + 2)]) {
+          tokens.push(w.slice(i, i + 2));
+          i += 2;
+        } else if (phonemeMap[w[i]]) {
+          tokens.push(w[i]);
+          i += 1;
+        } else {
+          i += 1;
+        }
+      }
+
+      if (tokens.length === 0) return;
+
+      const totalDur = tokens.reduce((sum, t) => sum + phonemeMap[t].dur, 0);
+      const startTime = audioCtx.currentTime + 0.05;
+
+      // 1. Көмей дыбысы
+      const osc = audioCtx.createOscillator();
+      osc.setPeriodicWave(createVocalWave(audioCtx));
+
+      // Табиғи сөйлеу интонациясы
+      const pitch = 118; // Қазақша орташа ер адам даусының жиілігі
+      osc.frequency.setValueAtTime(pitch, startTime);
+      osc.frequency.linearRampToValueAtTime(pitch * 1.06, startTime + totalDur * 0.3);
+      osc.frequency.linearRampToValueAtTime(pitch * 0.88, startTime + totalDur);
+
+      const oscGain = audioCtx.createGain();
+      oscGain.gain.setValueAtTime(0.001, startTime);
+
+      // 2. Ауыз қуысы форманттары (3 негізгі резонатор)
+      const f1 = audioCtx.createBiquadFilter();
+      const f2 = audioCtx.createBiquadFilter();
+      const f3 = audioCtx.createBiquadFilter();
+
+      f1.type = f2.type = f3.type = 'bandpass';
+      f1.Q.setValueAtTime(5.0, startTime);
+      f2.Q.setValueAtTime(7.0, startTime);
+      f3.Q.setValueAtTime(9.0, startTime);
+
+      const master = audioCtx.createGain();
+      master.gain.setValueAtTime(0.8, startTime);
+      master.connect(audioCtx.destination);
+
+      osc.connect(oscGain);
+      oscGain.connect(f1);
+      oscGain.connect(f2);
+      oscGain.connect(f3);
+
+      f1.connect(master);
+      f2.connect(master);
+      f3.connect(master);
+
+      osc.start(startTime);
+      osc.stop(startTime + totalDur + 0.05);
+
+      // 3. Шу модулі (Қатаң/Ысыңқы дыбыстар үшін)
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = getNoiseBuffer(audioCtx);
+      const noiseFilter = audioCtx.createBiquadFilter();
+      noiseFilter.type = 'bandpass';
+      noiseFilter.Q.setValueAtTime(2.5, startTime);
+      const noiseGain = audioCtx.createGain();
+      noiseGain.gain.setValueAtTime(0.001, startTime);
+
+      noise.connect(noiseFilter);
+      noiseFilter.connect(noiseGain);
+      noiseGain.connect(master);
+
+      noise.start(startTime);
+      noise.stop(startTime + totalDur + 0.05);
+
+      // 4. Дыбыстарды қатып қалмайтындай байланыстыру
+      let t = startTime;
+
+      tokens.forEach((tok) => {
+        const p = phonemeMap[tok];
+        const dur = p.dur;
+        const trans = dur * 0.3; // Ауысу уақыты
+
+        if (p.type === 'fricative') {
+          // Шуды күшейту, көмейді басу
+          oscGain.gain.linearRampToValueAtTime(0.001, t + 0.01);
+          noiseFilter.frequency.setValueAtTime(p.noiseF, t);
+          noiseGain.gain.linearRampToValueAtTime(p.gain * 0.25, t + 0.02);
+          noiseGain.gain.setValueAtTime(p.gain * 0.25, t + dur - 0.02);
+          noiseGain.gain.linearRampToValueAtTime(0.001, t + dur);
+        } else if (p.type === 'stop') {
+          // Қысқа жарылыс соққысы
+          oscGain.gain.linearRampToValueAtTime(0.001, t);
+          noiseFilter.frequency.setValueAtTime(p.burstF, t);
+          noiseGain.gain.setValueAtTime(p.gain * 0.3, t);
+          noiseGain.gain.linearRampToValueAtTime(0.001, t + 0.015);
+        } else {
+          // Дауысты немесе үнді дыбыс
+          noiseGain.gain.linearRampToValueAtTime(0.001, t + 0.01);
+          oscGain.gain.linearRampToValueAtTime(p.gain * 0.35, t + trans);
+
+          f1.frequency.linearRampToValueAtTime(p.f1, t + trans);
+          f2.frequency.linearRampToValueAtTime(p.f2, t + trans);
+          f3.frequency.linearRampToValueAtTime(p.f3, t + trans);
+        }
+
+        t += dur;
+      });
+
+      // Сөз аяғында таза өшіру
+      oscGain.gain.linearRampToValueAtTime(0.0001, t);
+    }
+
+    // Тұрақты сөздік тізімі
+    const wordList = [
+      "2102","aba","abaj","abajla","abajlauu","abajsyz","abajsyzda","abajsyzdyq","abajtanuu","abajtanuushy",
+      "abala","abalaq","abalat","abalatuu","abalauu","abaq","abaqty","abattandyr","abattandyruu","abattyghy",
+      "abattyq","abazha","abazhadaj","abdan","abdyra","abdyrauu","abdyrauuyq","abjyr","abjyrsyz","ablyghady",
+      "ablyghuu","ablyghyp","ablyqty","abylygnqy","abylyp","abynyp","abyr","abyroj","abyrojly","abyrojlylyghy",
+      "abyrojlylyq","abyrojsyz","abyrojsyzdyghy","abyrojsyzdyq","abyrojy","abyrzhuu","abyrzhuuly","abysyn","abyz",
+      "abyzsyn","abyzsynuu","abzal","abzaldyghy","abzaldyq","abzaly","abzhylan","ada","adal","adalda",
+      "adaldauu","adaldyghy","adaldyq","adalsuu","adam","adamdar","adamdyq","adamgershiligi","adamgershilik",
+      "adamj","adamsha","adamshylyghy","adamshylyq","adamsuu","adamsymaghy","adamsymaq","adamtamyr","adamzat",
+      "adamzhegish","adamzhegishtik","adaqtauu","adarghy","adas","adasqan","adastyr","adastyruu","adasuu",
+      "adasuushylyghy","adasuushylyq","aduuyn","aduuynda","aduuyndauu","aduuyndyq","adygn","adym","adymda",
+      "adymdauu","adyr","adyra","adyragnda","adyragndauu","adyrajady","adyrajdy","adyrajt","adyrajtuu",
+      "adyrajuu","adyrajyp","adyraspan","adyrly","adyrmaq","adyrna","agha","aghady","aghaj","aghajyn",
+      "aghajyndas","aghajyndasuu","aghajyndy","aghajyndyghy","aghajyndyq","aghajynshyl","aghajynshylauu",
+      "aghajynshylyghy","aghajynshylyq","aghajynsymaq","aghal","aghala","aghalauu","aghaly","aghalyghy",
+      "aghalyq","aghar","agharagnda","agharagndauu","agharghan","aghart","aghartqy","aghartuu","aghartuushy",
+      "aghartuushylyghy","aghartuushylyq","agharuu","agharygnqy","aghash","aghashtan","aghashty","aghasyn",
+      "aghasynuu","aghasyz","aghat","aghataj","aghatsyz","aghattyghy","aghattyq","aghazhan","agheke","aghuu",
+      "aghyl","aghyluu","aghym","aghyn","aghynan","aghyp","aghys","aghyt","aghytuu","aghytyl","aghytyluu",
+      "aghyz","aghyzuu","aghyzyluu","aghza","aghzanygn","aghzasy","agn","agnsauu","agnyz","aideji","aidemi",
+      "aidette","aidil","aidildik","aijel","aijgili","aijnek","aijnekten","aike","aikeluu","ailem","ailemge",
+      "aili","ailsireuu","ailsiz","ain","aipke","air","aireket","airjne","airqajsysy","airtuirli","aisirese",
+      "aizhem","aj","ajaghynda","ajagndauu","ajan","ajaq","ajaqtan","ajaqtauu","ajaz","ajda","ajdan","ajghajlauu",
+      "ajghaq","ajlyq","ajnalasynda","ajnaluu","ajnalymy","ajnymas","ajqyn","ajran","ajt","ajtamyn","ajtpaqshy",
+      "ajtqanyn","ajtuu","ajuu","ajyghuu","ajyna","ajyptauu","ajyryp","al","ala","alasa","aldauu","aldy","aldygha",
+      "aldygnghy","aldyn","aldynan","aldynda","algha","alghashqy","alghashqyda","alghys","almastyruu","alpys",
+      "alpysynshy","alty","altyn","altynshy","aluu","alyp","alys","alysta","alystauu","alysuu","amaldar","aman",
+      "amanatqa","amanatyn","amandasuu","ana","anauu","ant","anyq","apa","aparuu","apta","aptada","aptasyna","aq",
+      "aqpan","aqquu","aqshyl","aqtauu","aqty","aqyl","aqylyn","ar","arada","aralap","aram","arasynda","arbauu",
+      "ardaqty","arghy","arly","arman","armanyna","arpa","arqa","arqyly","arta","artqa","artuu","arty","artyluu",
+      "artynan","artynda","artyq","aryq","arystan","as","asa","ash","ashshy","ashuu","ashuulanuu","ashyghuu",
+      "ashyq","aspan","asqazan","asty","astynda","astyq","asuu","asyghuu","asyghys","asyghysta","asyghystyq",
+      "asyp","asyqtyrmagnyz","asyrauu","asyruu","at","ata","atam","atanuu","ataq","attanuu","attap","atuu","aty",
+      "auua","auudan","auudaruu","auulauu","auuruu","auuyl","auuyr","auuyruu","auuystyruu","auuyz","az","aza",
+      "azaguil","azajghan","azajghysh","azajt","azajtqysh","azajtuu","azajuu","azala","azalauu","azaly","azamat",
+      "azamattyghy","azamattyq","azap","azdan","azdap","azhal","azhaldy","azhalsyz","azhar","azharla","azharlaghysh",
+      "azharlan","azharlanuu","azharlauu","azharly","azharsyz","azharsyzdan","azharsyzdanuu","azharsyzdyghy",
+      "azharsyzdyq","azhyn","azhyra","azhyraghysyz","azhyrajady","azhyrajdy","azhyrajuu","azhyrajyp","azhyras",
+      "azhyrastyr","azhyrastyruu","azhyrasuu","azhyrat","azhyratqy","azhyratuu","azhyrauu","azhyryghy","azhyryq",
+      "baghalamauu","baghalauu","baghasy","baghasyn","baghuu","baghyndyruu","baghynuu","baghyt","bailkim","bairi",
+      "baj","bajandauu","bajauu","bajlanysty","bajlanystyruu","bajlauu","bajlyq","bajqap","bajqauu","bajqauusyzda",
+      "bajsaldy","bal","bala","balaghattauu","balalar","balyq","baq","baqylauu","baqyt","baqytty","bar","barlyghy",
+      "barlyq","baruu","barys","bas","baspajtyn","baspana","basqa","basqaryp","basqasha","bastap","bastauu","basuu",
+      "basy","basyluu","basynda","basyp","bata","batqanda","batuuy","batyl","batyldyq","batyr","batys","bauuyr",
+      "bauuyrsaq","bedel","bejbit","bejbitshilik","bejbitshilikti","bejimdel","bejimdelgen","bejimdeluu","bejmailim",
+      "bejneleuu","bejnet","bejsenbi","bekemdeuu","bekituu","belbeuu","belgili","ber","bereke","berik","berip",
+      "beruu","bes","besinshi","beste","bet","bezendiruu","bildiruu","bilek","bilim","bilimge","biluu","bir","biraq",
+      "birdegne","birdej","birden","bireuu","bireuudiki","birge","biri","biriguu","biriktiruu","birinshi",
+      "birinshiden","birligi","birligin","birlik","birlikke","birlikteri","birneshe","birzholata","bituuge","biz",
+      "bizdi","bizdign","bizge","bjdaj","bjik","bjikterdi","bjiktigi","boj","bojdaq","bojy","bol","bolady",
+      "bolashaq","bolashaqqa","bolat","boluu","boluuy","bolygnyz","boran","borysh","boryshynan","bos","bosagha",
+      "bosatuu","bosatyp","bosauu","bostandyq","bostandyqty","bota","budyr","budyrmaq","bughattauu","bughynuu",
+      "buigiluu","buigin","buijrek","buikil","builik","builinuu","buirkit","bujryq","bujyruu","bul","bulaq","bult",
+      "buoilek","buoiligi","buoilim","buoilshek","buoilshekter","buoilshekteuu","buoiluu","buoirik","buruu","buryn",
+      "burynda","burys","burysh","buu","buugha","buulanuu","buuy","buzuu","buzyluu","da","dabyr","dagnqy","dail",
+      "dailel","daimdi","daimin","daipter","dairuumeni","daistuirin","daiuuir","daiuulet","dajyndauu","dala","damuu",
+      "dana","dauulasuu","dauuystap","de","degenin","degenmen","dejin","dejingi","dem","demaluu","demalys","demeuu",
+      "dene","densauulyq","dep","dereuu","dertke","dirildeuu","dos","dostyq","duijsenbi","duinjege","duoigngelek",
+      "durys","dushpandyq","dybystauu","egn","egnbek","egnbekqor","egnbekteuu","ekeuui","ekeuuimiz","eki","ekige",
+      "ekinshi","ekinshiden","ekisi","el","eluu","eluuinshi","emdeluu","emdeuu","emes","endi","engizuu","eni",
+      "enuu","er","eresek","eresektik","erezhe","erik","erin","eritip","eritkish","erituu","erkin","erkindikti",
+      "erlik","erte","ertegn","ertegnge","ertek","eruu","esen","esep","esepsiz","eseptegish","eseptep","esepteuu",
+      "eseptik","esh","eshki","eshkim","eshkimdiki","eshqashan","eshtegne","esik","esimdikter","eske","eskertuu",
+      "eskeruu","eski","eskiruu","este","estelikter","esten","estiluu","estuu","et","etik","etistikter","etuu",
+      "ghajyp","ghashyq","ghasyr","ghazhap","ghjmarat","ghylym","guide","guil","guildenuu","guildeuu","habar",
+      "habardar","habarlauu","halyq","halyqqa","hanym","ilesuu","ilgeri","ilgerileuu","iluu","ini","inili",
+      "irimshik","is","ish","ishek","ishinde","ishinen","ishki","ishtej","ishuu","isine","iske","istej","istetuu",
+      "isteuu","izdenimpaz","izdeuu","izgilikke","izin","jai","je","jek","jelik","jgi","jis","jiskeuu","jissuu",
+      "jjuu","jt","jyq","kaimeletke","kairi","kairilik","kaisip","kebuu","kedej","kedergilerdi","kegn","kegneje",
+      "kegnejuu","kegnes","kegnesin","kegnistikke","kejbir","kejde","kejin","kejinge","kejingi","kejinirek",
+      "kekiruu","kel","kelesi","kelgen","kelin","kelip","kelisuu","keluu","keme","kemip","kempirqosaq","ken",
+      "kenetten","kerek","keremet","keri","kesh","keshe","keshirigniz","keshirim","keshirimdi","keshiruu","keshke",
+      "keshki","kesuu","ket","ketuu","keuude","kez","kezde","kezdesetin","kezegn","kim","kimdiki","kimge",
+      "kimmen","kimnen","kimnign","kirgizuu","kirip","kiruu","kishi","kishipejil","kishirejuu","kishisi",
+      "kishkentaj","kisilik","kitap","kjim","kuibir","kuide","kuidign","kuidik","kuigngirt","kuij","kuijreuu",
+      "kuil","kuilgin","kuilimdeuu","kuilli","kuiluu","kuimain","kuimaindanuu","kuimis","kuin","kuindelikti",
+      "kuinderi","kuindiz","kuini","kuinnign","kuintizbe","kuire","kuirese","kuiresuu","kuirish","kuish",
+      "kuisheje","kuishejuu","kuishi","kuishti","kuituu","kuiz","kuizde","kuoibeje","kuoibejtuu","kuoigildir",
+      "kuoignil","kuoignildi","kuoignilsiz","kuoijlek","kuoik","kuoiktem","kuoiktemde","kuoil","kuoildenegn",
+      "kuoilegnke","kuoilem","kuoilik","kuoilikti","kuoimek","kuoimekshi","kuoimektesuu","kuoimirqyshqyl",
+      "kuoindiruu","kuoinuu","kuoip","kuoipshiligi","kuoir","kuoirik","kuoirinuu","kuoiriskenshe","kuoirkejuu",
+      "kuoirkem","kuoirneki","kuoirnekti","kuoirsetip","kuoirsetkish","kuoirsetuu","kuoirshi","kuoiruu",
+      "kuoiteriluu","kuoiteruu","kuoiz","kuoizben","kuoizden","kuoizge","kuoizqaras","kuuaiger","lajyq","las",
+      "lastanuu","madaqtauu","maghan","maghynasy","magndaj","magnyzdy","mahabbat","maigngi","maigngilik","mailim",
+      "mailimdeuu","maimilege","mairtebesi","maitin","maj","majysuu","maman","mamyr","mamyrdygn","maqsat",
+      "maqsatqa","maqsatyna","maqtanuu","maqtauu","mata","matadan","mauusym","maz","me","mejirban","mejirimdi",
+      "mektep","memleket","men","meni","menign","mereji","mereke","merzim","mezgil","mindet","mindetti","mj",
+      "mojyn","molaja","mugndy","muimkin","muishe","muisheleri","munaj","munarasy","munda","muoilsher",
+      "muoilsheri","mura","murager","muraghattar","muratqa","muryn","muz","muzdauu","myghym","mygn","mygnynshy",
+      "mynauu","myrysh","mys","mysal","mysaly","mysyq","nairse","naisil","naitjzhe","namys","namysty","nan",
+      "nashar","nauuryz","nazar","nazarda","ne","nege","negizgi","nelikten","nemese","nusqauulyqtary",
+      "nyghajtuu","nyghajuu","nyq","oghan","ogn","ognaj","ognaluu","ogngha","ogntuistik","oj","ojanuu",
+      "ojlap","ojlauu","ojnauu","ol","olar","olardy","olardygn","olargha","on","onnan","onsha","ony","onygn",
+      "onynshy","oqasy","oquu","oquulyq","oqytuu","oraluu","oraluuyn","orman","ornalastyruu","ornatuu","orny",
+      "ornyghuu","ornyn","ornyna","ornynan","ornyqtyruu","ortalyghy","ortasha","ortasy","ortasyna","ortasynda",
+      "oryndauu","oshaq","osy","osynda","ot","otan","otandy","otbasy","ottegi","otyruu","otyz","otyzynshy",
+      "ozuu","paik","pajda","pajdalanuu","pana","panalauu","paryz","paryzyn","pash","pe","pen","pikir",
+      "pikirlesuu","pishinder","pisuu","pyshaq","pysyqtauu","qaby","qabyldauu","qabyn","qabynuu","qadaghalauu",
+      "qadam","qadiri","qadirin","qadirli","qaghaz","qaghazdan","qaghazyn","qaghuu","qagntar","qagnyltyr",
+      "qajda","qajdan","qajghy","qajghyly","qajmaq","qajnaghan","qajnatqysh","qajnatylghan","qajnatylmaghan",
+      "qajnauu","qajran","qajrat","qajratty","qajrauu","qajsy","qajta","qajtalauu","qajtaruu","qajtuu",
+      "qajtyp","qajyrly","qajyrymdy","qajyrymdylyq","qal","qala","qalaj","qalajy","qalam","qalammen","qalauu",
+      "qaldy","qaldyq","qaldyruu","qalghany","qalghyr","qalpyna","qalqyp","qaltyrauu","qaluu","qalygn","qalyp",
+      "qalyptastyruu","qalypty","qalyqtauu","qalzhygndauu","qamauu","qamqor","qamshylauu","qan","qanajnalym",
+      "qandaj","qansha","qap","qaperge","qaptama","qar","qara","qaragnghy","qaraj","qarama","qaramastan",
+      "qarasha","qarastyruu","qaratpa","qarauu","qarshygha","qarsy","qarsylyq","qart","qaryndas","qaryndasty",
+      "qashan","qasiret","qasjeti","qasjetin","qasqyr","qasterleuu","qasynda","qasyq","qatal","qatar",
+      "qatarynan","qatelesuu","qatpauu","qatty","qatuu","qatysuu","qaz","qazan","qazaq","qazaqtardygn","qazhet",
+      "qazhettilikteri","qazhyrly","qazir","qazirgi","qazuu","qjaldauu","qjanat","qjmyl","qjrauu","qjsajuu",
+      "qjsyq","qjylysuu","qjyn","qjyndyqtardy","qjyp","qognyr","qognyrauu","qoj","qoja","qojan","qojuu",
+      "qol","qola","qoldanylatyn","qoldanysqa","qoldap","qoldauu","qolghap","qolmen","qonaq","qonuu","qorapta",
+      "qorghana","qorghap","qorghasyn","qorghauu","qorqaq","qorquu","qorqynysh","qorqytuu","qorytpa","qorytpauu",
+      "qorytuu","qorytyndy","qoshtasuu","qospa","qospalary","qosuu","qosyp","qozghalys","qozy","qubyry","qudyq",
+      "qujuu","qujyluu","qulaq","qulatyp","qulauu","quldyrauu","qulyn","qulyptauu","qumartuu","qumyra","qunyn",
+      "quqyq","qurastyruu","qurdas","qurmet","qurmetke","qurmetteuu","qurt","quruu","qus","qushtar","qut",
+      "qutqaruu","qutqaryp","quttyqtauu","quty","qutyluu","quuanuu","quuanysh","quuanyshty","quuuu","quuyp",
+      "qylmauu","qylmys","qyluu","qymyz","qyrkuijek","qyrkuijektign","qyryq","qyryqynshy","qys","qysh","qyshqyl",
+      "qysqa","qysqaruu","qysta","qysuu","qysymy","qyz","qyzghylt","qyzmet","qyzyghuu","qyzyghuushylyq","qyzyl",
+      "qyzyq","raqmet","regnq","renzhuu","ret","retteuu","rettik","rjza","ruqsat","ruuh","sabalaq","sabaq",
+      "sabylygnqy","sabylyp","sabyn","sabyr","sabyrgha","sabyrly","saghan","saghat","saghatta","saghynuu",
+      "sailem","sairsenbi","sait","saittilik","saiuuir","saiuuirdign","saiuule","sajahat","sajahattauu","sajyn",
+      "sajynghy","saldar","salmaghyn","salmaq","salmaqtauu","salqyn","salqyndatqysh","saluu","salystyruu","san",
+      "sana","sanagha","sanalatyn","sanalmajtyn","sanauu","sandar","sansyz","sany","sap","sapalar","sapar",
+      "saptyajaq","saqtap","saqtauu","saraptauu","sarqyluu","sarqyrama","sary","satuu","satyp","sauu","sauual",
+      "sauusaq","sauuyghuu","sauuyqtyruu","saz","sebebi","sebep","sebeptermen","segiz","segizden","segizinshi",
+      "sejsenbi","sekirip","sekiruu","seksen","sekseninshi","sen","senbi","sendiruu","seni","senign","senim",
+      "senimen","senimmen","sensiz","senuu","serik","sertke","seziluu","sezim","sezinuu","sezuu","shabuu",
+      "shaghymdanuu","shagnyraq","shaikirt","shaj","shajqaluu","shalbar","shaldyghuu","shaluu","shamamen",
+      "shamasynda","shanyshqy","shapan","shapqylauu","shaqyruu","sharshauu","sharshy","shash","shashuu","shashyp",
+      "shashyratuu","shashyrauu","shatastyruu","shattyq","sheber","shegeleuu","shegindiruu","sheginuu","shegnber",
+      "sheguu","shelek","sheshe","sheshim","sheshimdi","sheshuu","shilde","shiruu","shje","shjrek","shomyluu",
+      "shoshuu","shoshynuu","shubat","shuimegi","shuoildeuu","shuoip","shuu","shuuly","shydam","shydamdy","shydauu",
+      "shygharmauu","shygharuu","shyghuu","shyghuuy","shyghys","shygndaluu","shygndargha","shyn","shyndyq",
+      "shyndyqqa","shyndyqty","shyntaq","shyny","shynyghuu","shyq","shyryn","signli","silekej","siz","sizdign",
+      "sjpauu","sjrek","sjuu","sjyr","sodan","soghan","soghuu","soghys","soghysy","sogn","sognghy","sogny","sol",
+      "solgha","soltuistik","sonda","sondaj","sondyqtan","sonshalyqty","sonshama","sonymen","sopaq","sorghy",
+      "sozuu","sozyluu","sugnqar","suignguu","suijek","suijenuu","suijeuu","suijikti","suijuu","suirinuu","suiruu",
+      "suit","suizgi","suizgileuu","suizuu","sujyq","sujyqtyq","sujyqtyqtar","suluu","suoijlesuu","suoijleuu",
+      "suoiz","suoizder","suoizderden","suoizderdi","suoizderdign","suoizinde","sur","suraq","suraqtar","surauu",
+      "suu","suulanuu","suuret","suuretteuu","suusabyn","suusyn","suusyz","suutegi","suuy","suuyq","syj","syjlauu",
+      "syjly","syjymdylyghy","syjymdylyq","syjynuu","syn","synap","synaq","synauu","syndyruu","synuu","synyp",
+      "sypajy","syr","syrlasuu","syrqattanuu","syrtqy","syryn","syzbasyn","syzuu","syzyp","syzyqtar","tabaq",
+      "tabaqsha","tabjghat","tabjghj","tabuu","tabys","tabysqa","taghdyr","taghy","tagn","tagndanuu","tagndauu",
+      "tagnertegn","tagnghaluu","tagnghy","tailim","tairbje","tairbjeleuu","tairtip","tairtipke","taitti",
+      "taiuuelsizdikti","taiuulik","taizhirjbe","tajauu","tajaz","tajazdauu","tajsalmaj","talap","talapty",
+      "talasuu","taldauu","taldauuy","talpynuu","talqygha","talqylauu","taltuis","taman","tamaq","tamaqtanuu",
+      "tamasha","tamsanuu","tamshy","tamshylauu","tamuu","tamyr","tamyry","tamyz","tamyzghysh","tanuu","tanymal",
+      "tanyp","tanystyruu","tanysuu","tanytuu","tapshylyq","tapsyrys","tar","tarauu","tarazylauu","tartuu","tary",
+      "taryluu","tas","tasa","tasalanuu","tastan","tastauu","tasuu","tasy","tatuu","tatuulasuu","tauu","tauusyluu",
+      "tauuyq","taza","tazartuu","tazartylghan","tazaruu","tegene","tegesh","tegil","tegn","tegnestiruu","tegniz",
+      "tegnseluu","tek","temir","temirden","temirli","ter","terbeluu","teregn","teregndej","teregndeuu","teregndik",
+      "tereze","teri","terleuu","tesuu","tez","tezdet","tiginen","tiguu","tikburysh","tikburyshty","tiktuoirtburysh",
+      "til","tildik","tilek","tilektes","tileuu","tileuuin","tilindegi","tirek","tireluu","tiri","tiriltuu",
+      "tirshilik","tis","tisteuu","tize","tjesili","tjimdi","tjis","toby","tobyq","toghyz","toghyzynshy","toj",
+      "tojtarys","tolmaghan","tolyghuu","tolyghymen","tolyp","tolyq","ton","toptary","toq","toqsan","toqsanynshy",
+      "toqtatpauu","toqtatuu","toqtatyp","toqtauu","toquu","tostaghan","tosuu","tot","totyghuu","totyq",
+      "totyqtandyruu","tozaq","tozuu","tuibir","tuije","tuikirik","tuikiruu","tuileuu","tuilik","tuilki","tuin",
+      "tuinde","tuinek","tuirlendiruu","tuirleri","tuirli","tuirtuu","tuis","tuishkirik","tuishkiruu","tuisindiruu",
+      "tuisinikti","tuisinuu","tuisiruu","tuiske","tuiski","tuisten","tuister","tuisti","tuisuu","tuitin","tuizeluu",
+      "tuizetuu","tuizeuu","tuizuu","tuman","tuoibelesuu","tuoigiluu","tuoiguu","tuoil","tuoileuu","tuoimen",
+      "tuoimendeuu","tuoir","tuoirt","tuoirtinshi","tuoirtten","tuoitep","tuoizimdilik","tuoizuu","tura","turaqtauu",
+      "turaqty","turghyndar","turghyzuu","turuu","turyp","tushshy","tuspaldauu","tutqyndauu","tuu","tuughan",
+      "tuura","tuuraly","tuurashyl","tuurasyn","tuuuu","tuuys","tuuystyq","tuz","tuzdy","tuzdyq","tygnajuu",
+      "tygndauu","tyjym","tym","tymaq","tynys","tynysh","tynyshtaluu","tynyshtyq","tyrnaq","tyrysuu","ughuu",
+      "ughym","ughyp","uideris","uigniluu","uij","uijde","uijlengen","uijlestiruu","uijrek","uijrene","uijrenuu",
+      "uijretip","uijretuu","uilgi","uilgili","uilken","uimit","uimitin","uimittenuu","uimitti","uin","uindemej",
+      "uindemeuu","uindeuu","uinemdeuu","uinsiz","uinsizdik","uirej","uish","uishburysh","uishburyshty","uishi",
+      "uishin","uishinshi","uishinshiden","uishte","uishten","uistem","uisteuu","uisti","uistinde","uistinen",
+      "uizbeuu","ujat","ujatty","ujqygha","ujyqtauu","ulghajuu","umtyluu","umytpagnyz","umytpauu","umytuu","unatuu",
+      "uoigndeuu","uoijtkeni","uoikinuu","uoikpe","uoikpeleuu","uoikshe","uoili","uoilim","uoilshem","uoilshemi",
+      "uoilshep","uoilsheuu","uoiltiruu","uoiluu","uoimir","uoimirge","uoindiruu","uoinege","uoinegesin","uoiner",
+      "uoinerge","uoinuu","uoirge","uoirkendeuu","uoirkendeuuge","uoirkenjet","uoirleuu","uoirmelep","uoirmeleuu",
+      "uoisiruu","uoisjetin","uoisuu","uoit","uoite","uoiteuu","uoitinemin","uoitinish","uoitip","uoitirik","uoitken",
+      "uoitkizuu","uoituu","uoiz","uoizderi","uoizderigniz","uoizderin","uoizen","uoizge","uoizgeris","uoizgertuu",
+      "uoizi","uoizign","uoizim","uoizimiz","urlauu","urpaq","uruu","ushaq","ushtastyruu","ushuu","ushyn","ushyp",
+      "ustap","ustauu","ustaz","usynuu","utuu","utyluu","uuaide","uuaidesinde","uuaqyt","uuaqytqa","uuaqytsha",
+      "uuaqytta","uuaqyty","uuaqytynda","uzap","uzaq","uzaruu","uzyn","uzyndyghy","ydys","ydysy","yghystyruu",
+      "ymyrt","yntymaq","yntymaqqa","yqtjmal","yqylas","yqylyq","yrys","ystyq","ysuu","yzalanuu","zagn","zagndy",
+      "zair","zaman","zat","zatty","zejnet","zerdeleuu","zertteuu","zhabuu","zhabyq","zhadynda","zhaghal","zhaghdaj",
+      "zhaghy","zhaghymdy","zhaghymsyz","zhaghynda","zhagna","zhagnalyq","zhagnartuu","zhagnaruu","zhagnasha",
+      "zhagnbyr","zhagnghyrtyp","zhagnghyruu","zhaine","zhairdem","zhairdemdesuu","zhaj","zhajuu","zhalbarynuu",
+      "zhalgha","zhalghastyruu","zhalghauu","zhalghauular","zhalghyz","zhalt","zhaltaqtauu","zhalyn","zhalynuu",
+      "zhaman","zhamandauu","zhan","zhanarmaj","zhanashyr","zhandanuu","zhanuuarlar","zhany","zhanynda","zhaqqa",
+      "zhaqsara","zhaqsy","zhaqsylyq","zhaqsylyqpen","zhaqsylyqqa","zhaqta","zhaqtauu","zhaqyn","zhaqynda",
+      "zhaqyndauu","zhar","zharajdy","zharatuu","zharja","zharq","zharqyn","zharty","zhartysy","zharuu","zharyluu",
+      "zharylyp","zharym","zharyp","zharyq","zharyqqa","zharysuu","zhas","zhasa","zhasalghan","zhasamauu","zhasaruu",
+      "zhasauu","zhasuoispirim","zhasuusha","zhasuushasy","zhasyl","zhasyrmaj","zhasyruu","zhasyrynuu","zhattauu",
+      "zhattyghuu","zhatuu","zhauuap","zhauuapkershilikti","zhauurauu","zhaz","zhaza","zhazalauu","zhazda","zhazuu",
+      "zhazyluu","zhazyp","zhedel","zhegnge","zhegnil","zhegnilis","zhegnis","zhegniske","zhegnuu","zhek",
+      "zhekkuoiruu","zheksenbi","zhel","zheltoqsan","zhem","zhemshuoip","zher","zherde","zherden","zherdi","zherge",
+      "zhergilikti","zhete","zhetekshilik","zheteleuu","zheter","zheti","zhetiluu","zhetinshi","zhetkiliksiz",
+      "zhetkilikti","zhetkizuu","zhetpis","zhetpisinshi","zhetuu","zheuu","zhez","zhiberuu","zhiger","zhigerlendiruu",
+      "zhigerli","zhigit","zhignishke","zhji","zhjirkenuu","zhjnap","zhjnauu","zhjyrma","zhjyrmasynshy","zhobalauu",
+      "zhoghaltuu","zhoghaluu","zhoghary","zhogharyda","zhojuu","zhol","zholdas","zholdy","zholgha","zholyn",
+      "zholyna","zhoq","zhorghalap","zhorghalauu","zhosparlauu","zhubatuu","zhuiginuu","zhuigire","zhuigirtuu",
+      "zhuigiruu","zhuijeleuu","zhuijesi","zhuijke","zhuijkesi","zhuire","zhuirek","zhuirekte","zhuirgizuu",
+      "zhuiris","zhuiruu","zhuiz","zhuizdik","zhuizege","zhuizge","zhuizinshi","zhuizuu","zhuldyz","zhuma","zhumaq",
+      "zhumsaq","zhumsauu","zhumys","zhuoineltuu","zhuoineluu","zhuoitel","zhuoiteluu","zhurnaq","zhurt","zhurtqa",
+      "zhutuu","zhuuan","zhuuyq","zhuuyqta","zhuuyrda","zhyghyluu","zhyl","zhylauu","zhylda","zhyldam","zhyldan",
+      "zhylqy","zhyly","zhylyna","zhylynuu","zhylzhuu","zhymjuu","zhyr","zjyrma","zulym"
+    ];
+
+    const wordInput = document.getElementById('wordInput');
+    const resultBox = document.getElementById('resultBox');
+
+    wordInput.addEventListener('input', (e) => {
+      const query = e.target.value.trim().toLowerCase();
+
+      if (!query) {
+        resultBox.innerHTML = '<span class="empty-state">Suoizdi engizigniz...</span>';
+        return;
+      }
+
+      const exactMatch = wordList.find(word => word === query);
+
+      if (exactMatch) {
+        resultBox.innerHTML = `
+          <div class="match-card">
+            <span class="word-text">${exactMatch}</span>
+            <button class="audio-btn" onclick="synthesizeAcousticWord('${exactMatch}')">
+              🗣️ Aituu
+            </button>
+          </div>
+        `;
+      } else {
+        resultBox.innerHTML = '<span class="empty-state">Bunday suoiz qorda zhoq nemese tolyq zhazylmady</span>';
+      }
+    });
+  </script>
+</body>
+</html>
