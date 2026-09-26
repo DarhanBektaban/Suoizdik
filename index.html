@@ -112,22 +112,50 @@
   </div>
 
   <script>
-    function toSpeech(str) {
-      return str
-        .toLowerCase()
-        .replace(/uoil/g, 'өл').replace(/uoi/g, 'ө')
-        .replace(/kui/g, 'кү').replace(/ui/g, 'ү')
-        .replace(/ai/g, 'ә')
-        .replace(/gn/g, 'ң')
-        .replace(/gh/g, 'ғ')
-        .replace(/sh/g, 'ш')
-        .replace(/zh/g, 'ж')
-        .replace(/uu/g, 'у')
-        .replace(/q/g, 'қ')
-        .replace(/j/g, 'й');
+    // Браузер ішінде дыбыс генерациялау жүйесі
+    let audioCtx = null;
+
+    function playToneWord(word) {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      // Әр әріпке арналған ноталар жиілігі (Гц)
+      const notes = {
+        'a': 261.63, 'b': 293.66, 'd': 329.63, 'e': 349.23,
+        'g': 392.00, 'h': 440.00, 'i': 493.88, 'j': 523.25,
+        'k': 587.33, 'l': 659.25, 'm': 698.46, 'n': 783.99,
+        'o': 880.00, 'p': 987.77, 'q': 1046.50, 'r': 1174.66,
+        's': 1318.51, 't': 1396.91, 'u': 1567.98, 'z': 1760.00
+      };
+
+      let time = audioCtx.currentTime;
+
+      for (let char of word.toLowerCase()) {
+        const freq = notes[char] || 440.0; // Егер әріп болмаса стандартты тон
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.type = 'sine'; // Таза әуезді қоңырау толқыны
+        osc.frequency.setValueAtTime(freq, time);
+
+        gain.gain.setValueAtTime(0.2, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start(time);
+        osc.stop(time + 0.15);
+
+        time += 0.16;
+      }
     }
 
-    // Сіз ұсынған барлық толық сөздер тізімі
+    // Сөздік қоры
     const wordList = [
       "2102","aba","abaj","abajla","abajlauu","abajsyz","abajsyzda","abajsyzdyq","abajtanuu","abajtanuushy",
       "abala","abalaq","abalat","abalatuu","abalauu","abaq","abaqty","abattandyr","abattandyruu","abattyghy",
@@ -333,35 +361,6 @@
     const wordInput = document.getElementById('wordInput');
     const resultBox = document.getElementById('resultBox');
 
-    // Дыбыстау функциясы
-    function speakWord(bektabanWord) {
-      if (!('speechSynthesis' in window)) {
-        alert("Dybystau qurylyghygnyzda qoldanylmajdy.");
-        return;
-      }
-
-      window.speechSynthesis.cancel();
-
-      const qazaqText = toSpeech(bektabanWord);
-      const utterance = new SpeechSynthesisUtterance(qazaqText);
-      const voices = window.speechSynthesis.getVoices();
-
-      // Тізімнен қазақ тілі дауысын іздеу
-      let voice = voices.find(v => v.lang.toLowerCase().includes('kk') || v.lang.toLowerCase().includes('kz'));
-      
-      if (voice) {
-        utterance.voice = voice;
-        utterance.lang = voice.lang;
-      } else {
-        utterance.lang = 'kk-KZ';
-      }
-
-      utterance.rate = 0.85;
-      utterance.pitch = 1.0;
-
-      window.speechSynthesis.speak(utterance);
-    }
-
     wordInput.addEventListener('input', (e) => {
       const query = e.target.value.trim().toLowerCase();
 
@@ -370,15 +369,14 @@
         return;
       }
 
-      // Тек дәл сәйкес келетін сөзді табу
       const exactMatch = wordList.find(word => word === query);
 
       if (exactMatch) {
         resultBox.innerHTML = `
           <div class="match-card">
             <span class="word-text">${exactMatch}</span>
-            <button class="audio-btn" onclick="speakWord('${exactMatch}')">
-              🔊 Tygnjauu
+            <button class="audio-btn" onclick="playToneWord('${exactMatch}')">
+              🎵 Tygnjauu
             </button>
           </div>
         `;
