@@ -334,48 +334,38 @@
     const wordInput = document.getElementById('wordInput');
     const resultBox = document.getElementById('resultBox');
 
-    // Браузерден дауыстарды жүктеп алу
-    let voiceList = [];
-    function initVoices() {
-      if ('speechSynthesis' in window) {
-        voiceList = window.speechSynthesis.getVoices();
-      }
-    }
-    initVoices();
-    if ('speechSynthesis' in window && window.speechSynthesis.onvoiceschanged !== undefined) {
-      window.speechSynthesis.onvoiceschanged = initVoices;
-    }
-
-    // Құрылғының өз даусымен оқу функциясы
+        // Қазақ тілінде таза оқу функциясы
     function speakWord(bektabanWord) {
       if (!('speechSynthesis' in window)) {
-        alert("Dybystau qoldanylmajdy.");
+        alert("Barlauushy dybystaudy qoldamajdy.");
         return;
       }
 
       window.speechSynthesis.cancel();
 
+      // Бектабан жазуын қазақша кириллге аудару
       const qazaqText = toSpeech(bektabanWord);
       const utterance = new SpeechSynthesisUtterance(qazaqText);
 
-      if (voiceList.length === 0) {
-        voiceList = window.speechSynthesis.getVoices();
-      }
+      // Барлық қолжетімді дауыстарды алу
+      const voices = window.speechSynthesis.getVoices();
 
-      // Жүйеден қазақша дауысты іздеу
-      let voice = voiceList.find(v => v.lang.toLowerCase().includes('kk') || v.lang.toLowerCase().includes('kz'));
-      if (!voice) {
-        voice = voiceList.find(v => v.lang.toLowerCase().includes('ru'));
-      }
+      // Тек қазақ тілін (kk, kk-KZ) іздеу
+      const kazakhVoice = voices.find(v => 
+        v.lang === 'kk-KZ' || 
+        v.lang === 'kk_KZ' || 
+        v.lang.toLowerCase().startsWith('kk')
+      );
 
-      if (voice) {
-        utterance.voice = voice;
-        utterance.lang = voice.lang;
+      if (kazakhVoice) {
+        utterance.voice = kazakhVoice;
+        utterance.lang = kazakhVoice.lang;
       } else {
         utterance.lang = 'kk-KZ';
       }
 
-      utterance.rate = 0.85;
+      // Қазақша анық шығуы үшін екпін мен жылдамдықты баптау
+      utterance.rate = 0.85; 
       utterance.pitch = 1.0;
 
       window.speechSynthesis.speak(utterance);
