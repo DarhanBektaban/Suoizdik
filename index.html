@@ -112,7 +112,7 @@
   </div>
 
   <script>
-    // Браузерге дауыстап оқыту үшін қажет ішкі конвертер (экранда көрінбейді)
+    // Сөзді қазақ тілінің дыбысына сай кириллицаға айналдыру
     function toSpeech(str) {
       return str
         .toLowerCase()
@@ -128,7 +128,7 @@
         .replace(/j/g, 'й');
     }
 
-    // Тек Дархан Бектабан әліпбиіндегі сөздік базасы
+    // Тек Дархан Бектабан әліпбиіндегі толық сөздік базасы
     const wordList = [
       "2102","aba","abaj","abajla","abajlauu","abajsyz","abajsyzda","abajsyzdyq","abajtanuu","abajtanuushy",
       "abala","abalaq","abalat","abalatuu","abalauu","abaq","abaqty","abattandyr","abattandyruu","abattyghy",
@@ -334,17 +334,15 @@
     const wordInput = document.getElementById('wordInput');
     const resultBox = document.getElementById('resultBox');
 
+    // Тікелей таза қазақша ойнататын сенімді функция
     function speakWord(bektabanWord) {
-      if (!('speechSynthesis' in window)) {
-        alert('Bul qurylyghy dauuystap oquudy qoldamajdy.');
-        return;
-      }
-      window.speechSynthesis.cancel();
-      // Қазақша дұрыс дыбысталуы үшін ішкі конвертер арқылы дыбыстайды
-      const utterance = new SpeechSynthesisUtterance(toSpeech(bektabanWord));
-      utterance.lang = 'kk-KZ';
-      utterance.rate = 0.9;
-      window.speechSynthesis.speak(utterance);
+      const qazaqText = toSpeech(bektabanWord);
+      const audioUrl = "https://translate.google.com/translate_tts?ie=UTF-8&tl=kk&client=tw-ob&q=" + encodeURIComponent(qazaqText);
+      
+      const audio = new Audio(audioUrl);
+      audio.play().catch(function(error) {
+        alert("Дыбыс ойнату мүмкін болмады. Интернет байланысын тексеріңіз.");
+      });
     }
 
     wordInput.addEventListener('input', (e) => {
