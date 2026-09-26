@@ -114,52 +114,50 @@
   <script>
     let audioCtx = null;
 
-    // Қазақ тілі фонемаларының дәл акустикалық көрсеткіштері
+    // Қазақ фонемаларының форманттары және жеке Q (өткізу жолағы) көрсеткіштері
     const phonemeMap = {
       // Жуан дауыстылар
-      'a':   { f1: 730,  f2: 1220, f3: 2450, dur: 0.17, type: 'vowel', gain: 0.7 },
-      'o':   { f1: 510,  f2: 890,  f3: 2350, dur: 0.17, type: 'vowel', gain: 0.7 },
-      'y':   { f1: 390,  f2: 1200, f3: 2300, dur: 0.13, type: 'vowel', gain: 0.6 }, // ы
-      'uu':  { f1: 340,  f2: 780,  f3: 2250, dur: 0.17, type: 'vowel', gain: 0.65 }, // у
+      'a':   { f1: 740,  f2: 1220, f3: 2450, q1: 4.8, q2: 6.5, dur: 0.16, type: 'vowel', gain: 0.72 },
+      'o':   { f1: 510,  f2: 880,  f3: 2350, q1: 5.2, q2: 7.0, dur: 0.16, type: 'vowel', gain: 0.70 },
+      'y':   { f1: 390,  f2: 1180, f3: 2300, q1: 6.0, q2: 7.5, dur: 0.13, type: 'vowel', gain: 0.62 }, // ы
+      'uu':  { f1: 340,  f2: 780,  f3: 2250, q1: 6.2, q2: 8.0, dur: 0.16, type: 'vowel', gain: 0.65 }, // у
 
       // Жіңішке дауыстылар
-      'ai':  { f1: 660,  f2: 1820, f3: 2650, dur: 0.16, type: 'vowel', gain: 0.7 }, // ә
-      'e':   { f1: 530,  f2: 1850, f3: 2600, dur: 0.14, type: 'vowel', gain: 0.65 },
-      'i':   { f1: 330,  f2: 2150, f3: 2850, dur: 0.12, type: 'vowel', gain: 0.6 }, // і
-      'uoi': { f1: 460,  f2: 1520, f3: 2300, dur: 0.16, type: 'vowel', gain: 0.65 }, // ө
-      'ui':  { f1: 330,  f2: 1620, f3: 2300, dur: 0.14, type: 'vowel', gain: 0.65 }, // ү
+      'ai':  { f1: 660,  f2: 1820, f3: 2650, q1: 4.8, q2: 6.5, dur: 0.15, type: 'vowel', gain: 0.70 }, // ә
+      'e':   { f1: 530,  f2: 1850, f3: 2600, q1: 5.2, q2: 7.0, dur: 0.14, type: 'vowel', gain: 0.65 },
+      'i':   { f1: 330,  f2: 2150, f3: 2850, q1: 6.5, q2: 8.5, dur: 0.12, type: 'vowel', gain: 0.60 }, // і
+      'uoi': { f1: 460,  f2: 1520, f3: 2300, q1: 5.5, q2: 7.2, dur: 0.15, type: 'vowel', gain: 0.65 }, // ө
+      'ui':  { f1: 330,  f2: 1620, f3: 2300, q1: 6.2, q2: 8.0, dur: 0.13, type: 'vowel', gain: 0.65 }, // ү
 
-      // Үнді және сонор дауыссыздар
-      'm':   { f1: 270,  f2: 1100, f3: 2200, dur: 0.11, type: 'nasal', gain: 0.35 },
-      'n':   { f1: 270,  f2: 1500, f3: 2350, dur: 0.11, type: 'nasal', gain: 0.35 },
-      'gn':  { f1: 270,  f2: 1950, f3: 2500, dur: 0.12, type: 'nasal', gain: 0.35 }, // ң
-      'l':   { f1: 380,  f2: 1250, f3: 2550, dur: 0.11, type: 'liquid', gain: 0.45 },
-      'r':   { f1: 420,  f2: 1350, f3: 1950, dur: 0.11, type: 'liquid', gain: 0.45 },
-      'j':   { f1: 290,  f2: 2100, f3: 2800, dur: 0.10, type: 'liquid', gain: 0.45 }, // й
+      // Үнділер
+      'm':   { f1: 270,  f2: 1100, f3: 2200, q1: 7.0, q2: 8.0, dur: 0.11, type: 'nasal', gain: 0.35 },
+      'n':   { f1: 270,  f2: 1500, f3: 2350, q1: 7.0, q2: 8.0, dur: 0.11, type: 'nasal', gain: 0.35 },
+      'gn':  { f1: 270,  f2: 1950, f3: 2500, q1: 7.0, q2: 8.0, dur: 0.12, type: 'nasal', gain: 0.35 }, // ң
+      'l':   { f1: 380,  f2: 1250, f3: 2550, q1: 5.5, q2: 7.0, dur: 0.11, type: 'liquid', gain: 0.45 },
+      'r':   { f1: 420,  f2: 1350, f3: 1950, q1: 5.5, q2: 7.0, dur: 0.11, type: 'liquid', gain: 0.45 },
+      'j':   { f1: 290,  f2: 2100, f3: 2800, q1: 6.5, q2: 8.0, dur: 0.10, type: 'liquid', gain: 0.45 }, // й
 
-      // Ұяң дауыссыздар
-      'b':   { f1: 240,  f2: 900,  f3: 2200, dur: 0.08, type: 'voiced_stop', gain: 0.4 },
-      'd':   { f1: 240,  f2: 1600, f3: 2450, dur: 0.08, type: 'voiced_stop', gain: 0.4 },
-      'g':   { f1: 250,  f2: 1900, f3: 2550, dur: 0.08, type: 'voiced_stop', gain: 0.4 },
-      'gh':  { f1: 400,  f2: 1150, f3: 2350, dur: 0.11, type: 'liquid', gain: 0.45 }, // ғ
+      // Ұяңдар
+      'b':   { f1: 240,  f2: 900,  f3: 2200, q1: 6.0, q2: 7.0, dur: 0.08, type: 'voiced_stop', gain: 0.4 },
+      'd':   { f1: 240,  f2: 1600, f3: 2450, q1: 6.0, q2: 7.0, dur: 0.08, type: 'voiced_stop', gain: 0.4 },
+      'g':   { f1: 250,  f2: 1900, f3: 2550, q1: 6.0, q2: 7.0, dur: 0.08, type: 'voiced_stop', gain: 0.4 },
+      'gh':  { f1: 400,  f2: 1150, f3: 2350, q1: 5.5, q2: 6.5, dur: 0.11, type: 'liquid', gain: 0.45 }, // ғ
       'z':   { f1: 240,  noiseF: 4200, dur: 0.12, type: 'voiced_fric', gain: 0.35 },
       'zh':  { f1: 240,  noiseF: 2500, dur: 0.12, type: 'voiced_fric', gain: 0.4 },
 
-      // Қатаң дауыссыздар
-      's':   { noiseF: 5000, dur: 0.13, type: 'fricative', gain: 0.3 },
-      'sh':  { noiseF: 2600, dur: 0.13, type: 'fricative', gain: 0.35 },
+      // Қатаңдар
+      's':   { noiseF: 5000, dur: 0.13, type: 'fricative', gain: 0.32 },
+      'sh':  { noiseF: 2600, dur: 0.13, type: 'fricative', gain: 0.36 },
       't':   { burstF: 2200, dur: 0.07, type: 'stop', gain: 0.5 },
       'k':   { burstF: 2400, dur: 0.07, type: 'stop', gain: 0.5 },
       'q':   { burstF: 1300, dur: 0.08, type: 'stop', gain: 0.5 }
     };
 
-    // Адам көмейінің акустикалық толқыны
     function createVocalWave(ctx) {
       const n = 1024;
       const real = new Float32Array(n);
       const imag = new Float32Array(n);
       for (let i = 1; i < n; i++) {
-        // Тірі көмей қатпарларының импульсі
         const factor = 1.0 / Math.pow(i, 1.25);
         real[i] = (i % 2 === 0 ? 0.6 : -0.6) * factor;
         imag[i] = factor * Math.sin(i * 0.3);
@@ -188,7 +186,7 @@
         audioCtx.resume();
       }
 
-      // Тіркестерді дұрыс жіктеу
+      // 1. Сөзді фонемаларға жіктеу
       const tokens = [];
       let i = 0;
       const w = word.toLowerCase();
@@ -209,40 +207,76 @@
 
       if (tokens.length === 0) return;
 
-      const totalDur = tokens.reduce((sum, t) => sum + phonemeMap[t].dur, 0);
+      // 2. Қазақ тілінің соңғы буын екпінін анықтау (Stress Rule)
+      let lastVowelIndex = -1;
+      for (let k = tokens.length - 1; k >= 0; k--) {
+        if (phonemeMap[tokens[k]].type === 'vowel') {
+          lastVowelIndex = k;
+          break;
+        }
+      }
+
+      // Екпін мен ұзақтықты есептеу
+      const tokenDurations = tokens.map((tok, idx) => {
+        let dur = phonemeMap[tok].dur;
+        if (idx === lastVowelIndex) {
+          dur *= 1.35; // Соңғы буынның дауыстысы 35%-ға ұзарады
+        }
+        return dur;
+      });
+
+      const totalDur = tokenDurations.reduce((sum, d) => sum + d, 0);
       const startTime = audioCtx.currentTime + 0.05;
 
-      // 1. Көмей дыбысы
+      // 3. Негізгі көмей генераторы
       const osc = audioCtx.createOscillator();
       osc.setPeriodicWave(createVocalWave(audioCtx));
 
-      // Табиғи сөйлеу интонациясы
-      const pitch = 118; // Қазақша орташа ер адам даусының жиілігі
+      // Интонация контуры: Сөз соңындағы екпін сәл жоғарылап, соңында жұмсақ бәсеңдейді
+      const pitch = 118;
       osc.frequency.setValueAtTime(pitch, startTime);
-      osc.frequency.linearRampToValueAtTime(pitch * 1.06, startTime + totalDur * 0.3);
-      osc.frequency.linearRampToValueAtTime(pitch * 0.88, startTime + totalDur);
+      osc.frequency.linearRampToValueAtTime(pitch * 1.05, startTime + totalDur * 0.4);
+      if (lastVowelIndex !== -1) {
+        const stressTime = startTime + tokenDurations.slice(0, lastVowelIndex).reduce((a, b) => a + b, 0);
+        osc.frequency.linearRampToValueAtTime(pitch * 1.12, stressTime); // Екпінді буын жиілігі
+      }
+      osc.frequency.linearRampToValueAtTime(pitch * 0.90, startTime + totalDur);
 
       const oscGain = audioCtx.createGain();
       oscGain.gain.setValueAtTime(0.001, startTime);
 
-      // 2. Ауыз қуысы форманттары (3 негізгі резонатор)
+      // 4. Өкпенің тыныс/аспирация шуы (Aspiration Noise Engine)
+      const aspNoise = audioCtx.createBufferSource();
+      aspNoise.buffer = getNoiseBuffer(audioCtx);
+      const aspFilter = audioCtx.createBiquadFilter();
+      aspFilter.type = 'lowpass';
+      aspFilter.frequency.setValueAtTime(1800, startTime); // Көмейден өтетін жұмсақ дем
+
+      const aspGain = audioCtx.createGain();
+      aspGain.gain.setValueAtTime(0.028, startTime); // ~3% табиғи дем шуы
+
+      aspNoise.connect(aspFilter);
+      aspFilter.connect(aspGain);
+
+      // 5. Ауыз қуысының форманттары (F1, F2, F3)
       const f1 = audioCtx.createBiquadFilter();
       const f2 = audioCtx.createBiquadFilter();
       const f3 = audioCtx.createBiquadFilter();
-
       f1.type = f2.type = f3.type = 'bandpass';
-      f1.Q.setValueAtTime(5.0, startTime);
-      f2.Q.setValueAtTime(7.0, startTime);
-      f3.Q.setValueAtTime(9.0, startTime);
 
       const master = audioCtx.createGain();
-      master.gain.setValueAtTime(0.8, startTime);
+      master.gain.setValueAtTime(0.85, startTime);
       master.connect(audioCtx.destination);
 
+      // Көмей толқыны мен тыныс шуын резонаторларға біріктіріп жіберу
       osc.connect(oscGain);
       oscGain.connect(f1);
       oscGain.connect(f2);
       oscGain.connect(f3);
+
+      aspGain.connect(f1);
+      aspGain.connect(f2);
+      aspGain.connect(f3);
 
       f1.connect(master);
       f2.connect(master);
@@ -250,48 +284,53 @@
 
       osc.start(startTime);
       osc.stop(startTime + totalDur + 0.05);
+      aspNoise.start(startTime);
+      aspNoise.stop(startTime + totalDur + 0.05);
 
-      // 3. Шу модулі (Қатаң/Ысыңқы дыбыстар үшін)
-      const noise = audioCtx.createBufferSource();
-      noise.buffer = getNoiseBuffer(audioCtx);
-      const noiseFilter = audioCtx.createBiquadFilter();
-      noiseFilter.type = 'bandpass';
-      noiseFilter.Q.setValueAtTime(2.5, startTime);
-      const noiseGain = audioCtx.createGain();
-      noiseGain.gain.setValueAtTime(0.001, startTime);
+      // 6. Дауыссыз қатаң дыбыстар шуы (Fricatives & Stops)
+      const fricNoise = audioCtx.createBufferSource();
+      fricNoise.buffer = getNoiseBuffer(audioCtx);
+      const fricFilter = audioCtx.createBiquadFilter();
+      fricFilter.type = 'bandpass';
+      fricFilter.Q.setValueAtTime(2.5, startTime);
+      const fricGain = audioCtx.createGain();
+      fricGain.gain.setValueAtTime(0.001, startTime);
 
-      noise.connect(noiseFilter);
-      noiseFilter.connect(noiseGain);
-      noiseGain.connect(master);
+      fricNoise.connect(fricFilter);
+      fricFilter.connect(fricGain);
+      fricGain.connect(master);
 
-      noise.start(startTime);
-      noise.stop(startTime + totalDur + 0.05);
+      fricNoise.start(startTime);
+      fricNoise.stop(startTime + totalDur + 0.05);
 
-      // 4. Дыбыстарды қатып қалмайтындай байланыстыру
+      // 7. Параметрлік уақыт желісімен ойнату
       let t = startTime;
 
-      tokens.forEach((tok) => {
+      tokens.forEach((tok, idx) => {
         const p = phonemeMap[tok];
-        const dur = p.dur;
-        const trans = dur * 0.3; // Ауысу уақыты
+        const dur = tokenDurations[idx];
+        const trans = dur * 0.32;
+        const isStressed = (idx === lastVowelIndex);
+        const gainVal = isStressed ? p.gain * 1.15 : p.gain;
 
         if (p.type === 'fricative') {
-          // Шуды күшейту, көмейді басу
           oscGain.gain.linearRampToValueAtTime(0.001, t + 0.01);
-          noiseFilter.frequency.setValueAtTime(p.noiseF, t);
-          noiseGain.gain.linearRampToValueAtTime(p.gain * 0.25, t + 0.02);
-          noiseGain.gain.setValueAtTime(p.gain * 0.25, t + dur - 0.02);
-          noiseGain.gain.linearRampToValueAtTime(0.001, t + dur);
+          fricFilter.frequency.setValueAtTime(p.noiseF, t);
+          fricGain.gain.linearRampToValueAtTime(p.gain * 0.28, t + 0.02);
+          fricGain.gain.setValueAtTime(p.gain * 0.28, t + dur - 0.02);
+          fricGain.gain.linearRampToValueAtTime(0.001, t + dur);
         } else if (p.type === 'stop') {
-          // Қысқа жарылыс соққысы
           oscGain.gain.linearRampToValueAtTime(0.001, t);
-          noiseFilter.frequency.setValueAtTime(p.burstF, t);
-          noiseGain.gain.setValueAtTime(p.gain * 0.3, t);
-          noiseGain.gain.linearRampToValueAtTime(0.001, t + 0.015);
+          fricFilter.frequency.setValueAtTime(p.burstF, t);
+          fricGain.gain.setValueAtTime(p.gain * 0.35, t);
+          fricGain.gain.linearRampToValueAtTime(0.001, t + 0.015);
         } else {
-          // Дауысты немесе үнді дыбыс
-          noiseGain.gain.linearRampToValueAtTime(0.001, t + 0.01);
-          oscGain.gain.linearRampToValueAtTime(p.gain * 0.35, t + trans);
+          fricGain.gain.linearRampToValueAtTime(0.001, t + 0.01);
+          oscGain.gain.linearRampToValueAtTime(gainVal * 0.38, t + trans);
+
+          f1.Q.linearRampToValueAtTime(p.q1 || 5.0, t + trans);
+          f2.Q.linearRampToValueAtTime(p.q2 || 7.0, t + trans);
+          f3.Q.linearRampToValueAtTime(9.0, t + trans);
 
           f1.frequency.linearRampToValueAtTime(p.f1, t + trans);
           f2.frequency.linearRampToValueAtTime(p.f2, t + trans);
@@ -301,8 +340,8 @@
         t += dur;
       });
 
-      // Сөз аяғында таза өшіру
       oscGain.gain.linearRampToValueAtTime(0.0001, t);
+      aspGain.gain.linearRampToValueAtTime(0.0001, t);
     }
 
     // Тұрақты сөздік тізімі
