@@ -19,7 +19,7 @@
     }
     .card {
       background: #ffffff;
-      padding: 36px 28px;
+      padding: 32px 24px;
       border-radius: 20px;
       box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.06);
       width: 100%;
@@ -70,7 +70,7 @@
       border: 1.5px solid #86efac;
     }
     .word-text {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       font-weight: 700;
       color: #166534;
       letter-spacing: 0.3px;
@@ -112,7 +112,6 @@
   </div>
 
   <script>
-    // Сөзді қазақ тілінің дыбысына сай кириллицаға айналдыру
     function toSpeech(str) {
       return str
         .toLowerCase()
@@ -128,7 +127,7 @@
         .replace(/j/g, 'й');
     }
 
-    // Тек Дархан Бектабан әліпбиіндегі толық сөздік базасы
+    // Сіз ұсынған барлық толық сөздер тізімі
     const wordList = [
       "2102","aba","abaj","abajla","abajlauu","abajsyz","abajsyzda","abajsyzdyq","abajtanuu","abajtanuushy",
       "abala","abalaq","abalat","abalatuu","abalauu","abaq","abaqty","abattandyr","abattandyruu","abattyghy",
@@ -334,38 +333,30 @@
     const wordInput = document.getElementById('wordInput');
     const resultBox = document.getElementById('resultBox');
 
-        // Қазақ тілінде таза оқу функциясы
+    // Дыбыстау функциясы
     function speakWord(bektabanWord) {
       if (!('speechSynthesis' in window)) {
-        alert("Barlauushy dybystaudy qoldamajdy.");
+        alert("Dybystau qurylyghygnyzda qoldanylmajdy.");
         return;
       }
 
       window.speechSynthesis.cancel();
 
-      // Бектабан жазуын қазақша кириллге аудару
       const qazaqText = toSpeech(bektabanWord);
       const utterance = new SpeechSynthesisUtterance(qazaqText);
-
-      // Барлық қолжетімді дауыстарды алу
       const voices = window.speechSynthesis.getVoices();
 
-      // Тек қазақ тілін (kk, kk-KZ) іздеу
-      const kazakhVoice = voices.find(v => 
-        v.lang === 'kk-KZ' || 
-        v.lang === 'kk_KZ' || 
-        v.lang.toLowerCase().startsWith('kk')
-      );
-
-      if (kazakhVoice) {
-        utterance.voice = kazakhVoice;
-        utterance.lang = kazakhVoice.lang;
+      // Тізімнен қазақ тілі дауысын іздеу
+      let voice = voices.find(v => v.lang.toLowerCase().includes('kk') || v.lang.toLowerCase().includes('kz'));
+      
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
       } else {
         utterance.lang = 'kk-KZ';
       }
 
-      // Қазақша анық шығуы үшін екпін мен жылдамдықты баптау
-      utterance.rate = 0.85; 
+      utterance.rate = 0.85;
       utterance.pitch = 1.0;
 
       window.speechSynthesis.speak(utterance);
