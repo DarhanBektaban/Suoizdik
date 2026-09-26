@@ -334,15 +334,51 @@
     const wordInput = document.getElementById('wordInput');
     const resultBox = document.getElementById('resultBox');
 
-    // Тікелей таза қазақша ойнататын сенімді функция
+    // Браузерден дауыстарды жүктеп алу
+    let voiceList = [];
+    function initVoices() {
+      if ('speechSynthesis' in window) {
+        voiceList = window.speechSynthesis.getVoices();
+      }
+    }
+    initVoices();
+    if ('speechSynthesis' in window && window.speechSynthesis.onvoiceschanged !== undefined) {
+      window.speechSynthesis.onvoiceschanged = initVoices;
+    }
+
+    // Құрылғының өз даусымен оқу функциясы
     function speakWord(bektabanWord) {
+      if (!('speechSynthesis' in window)) {
+        alert("Dybystau qoldanylmajdy.");
+        return;
+      }
+
+      window.speechSynthesis.cancel();
+
       const qazaqText = toSpeech(bektabanWord);
-      const audioUrl = "https://translate.google.com/translate_tts?ie=UTF-8&tl=kk&client=tw-ob&q=" + encodeURIComponent(qazaqText);
-      
-      const audio = new Audio(audioUrl);
-      audio.play().catch(function(error) {
-        alert("Дыбыс ойнату мүмкін болмады. Интернет байланысын тексеріңіз.");
-      });
+      const utterance = new SpeechSynthesisUtterance(qazaqText);
+
+      if (voiceList.length === 0) {
+        voiceList = window.speechSynthesis.getVoices();
+      }
+
+      // Жүйеден қазақша дауысты іздеу
+      let voice = voiceList.find(v => v.lang.toLowerCase().includes('kk') || v.lang.toLowerCase().includes('kz'));
+      if (!voice) {
+        voice = voiceList.find(v => v.lang.toLowerCase().includes('ru'));
+      }
+
+      if (voice) {
+        utterance.voice = voice;
+        utterance.lang = voice.lang;
+      } else {
+        utterance.lang = 'kk-KZ';
+      }
+
+      utterance.rate = 0.85;
+      utterance.pitch = 1.0;
+
+      window.speechSynthesis.speak(utterance);
     }
 
     wordInput.addEventListener('input', (e) => {
