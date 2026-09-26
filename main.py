@@ -3,13 +3,9 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-app = FastAPI(
-    title="suoizdik API",
-    description="Darhan Bektaban ailippesine arnalghan ashyq suoizdik zhaine audio API",
-    version="1.0.0"
-)
+app = FastAPI(title="suoizdik API")
 
-# Кез келген веб-сайттан сұраныс қабылдауға рұқсат (CORS)
+# Кез келген сайттан, қосымшадан қолжетімді болуы үшін
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,27 +28,28 @@ def to_cyrillic(text: str) -> str:
         .replace("q", "қ")
         .replace("j", "й"))
 
-# 1-қызмет: Сөз туралы мәлімет беру (JSON)
+# 1-қызмет: Сөз туралы мәлімет
 @app.get("/api/v1/word")
-def get_word_info(word: str = Query(..., description="Tekseriletin suoiz")):
+def get_word(word: str = Query(...)):
     word_clean = word.lower().strip()
-    audio_exists = os.path.exists(os.path.join(AUDIO_DIR, f"{word_clean}.mp3"))
+    file_path = os.path.join(AUDIO_DIR, f"{word_clean}.mp3")
+    has_audio = os.path.exists(file_path)
     
     return JSONResponse({
         "status": "success",
         "bektaban": word_clean,
         "cyrillic": to_cyrillic(word_clean),
-        "has_audio": audio_exists,
-        "audio_url": f"/api/v1/audio?word={word_clean}" if audio_exists else None
+        "has_audio": has_audio,
+        "audio_url": f"/api/v1/audio?word={word_clean}" if has_audio else None
     })
 
-# 2-қызмет: Сөздің таза MP3 дыбысын беру
+# 2-қызмет: Сөздің таза дыбысын әуен ретінде тікелей қайтару
 @app.get("/api/v1/audio")
-def get_audio_stream(word: str = Query(..., description="Dybystalatyn suoiz")):
+def get_audio(word: str = Query(...)):
     word_clean = word.lower().strip()
     file_path = os.path.join(AUDIO_DIR, f"{word_clean}.mp3")
 
     if os.path.exists(file_path):
-        return FileResponse(file_path, media_type="audio/mpeg", filename=f"{word_clean}.mp3")
+        return FileResponse(file_path, media_type="audio/mpeg")
     else:
-        raise HTTPException(status_code=404, detail="Bunday suoizdin audio fajly tabylmady")
+        raise HTTPException(status_code=404, detail="Audio tabylmady")
