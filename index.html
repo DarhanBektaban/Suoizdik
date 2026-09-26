@@ -112,10 +112,49 @@
   </div>
 
   <script>
-    // Браузер ішінде дыбыс генерациялау жүйесі
     let audioCtx = null;
 
-    function playToneWord(word) {
+    // Адам дауысының форманттары (F1, F2 жиіліктері)
+    const phonemes = {
+      'a':   { f1: 750,  f2: 1200, dur: 0.16, type: 'vowel' },
+      'ai':  { f1: 650,  f2: 1700, dur: 0.16, type: 'vowel' }, // ә
+      'e':   { f1: 500,  f2: 1800, dur: 0.15, type: 'vowel' },
+      'i':   { f1: 300,  f2: 2200, dur: 0.13, type: 'vowel' }, // і
+      'y':   { f1: 350,  f2: 1100, dur: 0.13, type: 'vowel' }, // ы
+      'o':   { f1: 500,  f2: 900,  dur: 0.16, type: 'vowel' },
+      'uoi': { f1: 450,  f2: 1500, dur: 0.16, type: 'vowel' }, // ө
+      'uu':  { f1: 320,  f2: 800,  dur: 0.16, type: 'vowel' }, // у
+      'ui':  { f1: 320,  f2: 1650, dur: 0.15, type: 'vowel' }, // ү
+      'm':   { f1: 250,  f2: 1000, dur: 0.12, type: 'nasal' },
+      'n':   { f1: 250,  f2: 1500, dur: 0.12, type: 'nasal' },
+      'gn':  { f1: 250,  f2: 2000, dur: 0.12, type: 'nasal' }, // ң
+      'b':   { f1: 200,  f2: 700,  dur: 0.08, type: 'stop' },
+      'd':   { f1: 200,  f2: 1600, dur: 0.08, type: 'stop' },
+      't':   { f1: 300,  f2: 1800, dur: 0.07, type: 'stop' },
+      'k':   { f1: 300,  f2: 2100, dur: 0.07, type: 'stop' },
+      'q':   { f1: 350,  f2: 1100, dur: 0.08, type: 'stop' },
+      's':   { noiseFreq: 5000,    dur: 0.14, type: 'fricative' },
+      'sh':  { noiseFreq: 3000,    dur: 0.14, type: 'fricative' },
+      'z':   { f1: 200, noiseFreq: 4500, dur: 0.13, type: 'voiced_fric' },
+      'zh':  { f1: 200, noiseFreq: 2800, dur: 0.13, type: 'voiced_fric' },
+      'gh':  { f1: 400,  f2: 1100, dur: 0.12, type: 'vowel' },
+      'l':   { f1: 380,  f2: 1300, dur: 0.12, type: 'nasal' },
+      'r':   { f1: 420,  f2: 1350, dur: 0.12, type: 'nasal' }
+    };
+
+    // Ақ шу (White noise) жасау
+    function createNoiseBuffer(ctx) {
+      const bufferSize = ctx.sampleRate * 0.5;
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        output[i] = Math.random() * 2 - 1;
+      }
+      return buffer;
+    }
+
+    // Сөзді әріп-әріппен акустикалық түрде сөйлету
+    function speakAcousticWord(word) {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
@@ -123,36 +162,84 @@
         audioCtx.resume();
       }
 
-      // Әр әріпке арналған ноталар жиілігі (Гц)
-      const notes = {
-        'a': 261.63, 'b': 293.66, 'd': 329.63, 'e': 349.23,
-        'g': 392.00, 'h': 440.00, 'i': 493.88, 'j': 523.25,
-        'k': 587.33, 'l': 659.25, 'm': 698.46, 'n': 783.99,
-        'o': 880.00, 'p': 987.77, 'q': 1046.50, 'r': 1174.66,
-        's': 1318.51, 't': 1396.91, 'u': 1567.98, 'z': 1760.00
-      };
+      // Тіркестерді дұрыс тану (sh, zh, gn, gh, uu, ai, ui, uoi)
+      const tokens = [];
+      let i = 0;
+      const w = word.toLowerCase();
+      while (i < w.length) {
+        if (i + 3 <= w.length && phonemes[w.slice(i, i + 3)]) {
+          tokens.push(w.slice(i, i + 3));
+          i += 3;
+        } else if (i + 2 <= w.length && phonemes[w.slice(i, i + 2)]) {
+          tokens.push(w.slice(i, i + 2));
+          i += 2;
+        } else {
+          tokens.push(w[i]);
+          i += 1;
+        }
+      }
 
       let time = audioCtx.currentTime;
+      const voicePitch = 125; // Адам дауысының негізгі тоны (Гц)
 
-      for (let char of word.toLowerCase()) {
-        const freq = notes[char] || 440.0; // Егер әріп болмаса стандартты тон
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
+      tokens.forEach(token => {
+        const p = phonemes[token] || { f1: 500, f2: 1500, dur: 0.1, type: 'vowel' };
 
-        osc.type = 'sine'; // Таза әуезді қоңырау толқыны
-        osc.frequency.setValueAtTime(freq, time);
+        if (p.type === 'fricative') {
+          // Шулы дауыссыздар (С, Ш)
+          const noise = audioCtx.createBufferSource();
+          noise.buffer = createNoiseBuffer(audioCtx);
 
-        gain.gain.setValueAtTime(0.2, time);
-        gain.gain.exponentialRampToValueAtTime(0.001, time + 0.15);
+          const filter = audioCtx.createBiquadFilter();
+          filter.type = 'bandpass';
+          filter.frequency.setValueAtTime(p.noiseFreq, time);
+          filter.Q.setValueAtTime(3.0, time);
 
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
+          const gain = audioCtx.createGain();
+          gain.gain.setValueAtTime(0.08, time);
+          gain.gain.exponentialRampToValueAtTime(0.001, time + p.dur);
 
-        osc.start(time);
-        osc.stop(time + 0.15);
+          noise.connect(filter);
+          filter.connect(gain);
+          gain.connect(audioCtx.destination);
 
-        time += 0.16;
-      }
+          noise.start(time);
+          noise.stop(time + p.dur);
+        } else {
+          // Дауыстылар және қалған үнді дыбыстар (F1, F2 резонансымен)
+          const osc = audioCtx.createOscillator();
+          osc.type = 'sawtooth'; // Адам дауыс қатпарларының импульсі
+          osc.frequency.setValueAtTime(voicePitch, time);
+
+          // 1-ші формант (Тілдің биіктігі)
+          const filter1 = audioCtx.createBiquadFilter();
+          filter1.type = 'bandpass';
+          filter1.frequency.setValueAtTime(p.f1, time);
+          filter1.Q.setValueAtTime(5.0, time);
+
+          // 2-ші формант (Тілдің алға/артқа орналасуы)
+          const filter2 = audioCtx.createBiquadFilter();
+          filter2.type = 'bandpass';
+          filter2.frequency.setValueAtTime(p.f2, time);
+          filter2.Q.setValueAtTime(6.0, time);
+
+          const gain = audioCtx.createGain();
+          const amp = p.type === 'stop' ? 0.25 : 0.15;
+          gain.gain.setValueAtTime(amp, time);
+          gain.gain.exponentialRampToValueAtTime(0.001, time + p.dur);
+
+          osc.connect(filter1);
+          osc.connect(filter2);
+          filter1.connect(gain);
+          filter2.connect(gain);
+          gain.connect(audioCtx.destination);
+
+          osc.start(time);
+          osc.stop(time + p.dur);
+        }
+
+        time += p.dur;
+      });
     }
 
     // Сөздік қоры
@@ -375,8 +462,8 @@
         resultBox.innerHTML = `
           <div class="match-card">
             <span class="word-text">${exactMatch}</span>
-            <button class="audio-btn" onclick="playToneWord('${exactMatch}')">
-              🎵 Tygnjauu
+            <button class="audio-btn" onclick="speakAcousticWord('${exactMatch}')">
+              🗣️ Aituu
             </button>
           </div>
         `;
